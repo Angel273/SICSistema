@@ -156,33 +156,61 @@ public function libroVentas(Request $r)
     return view('reports.ventas', compact('rows','desde','hasta','stores','store','tot'));
 }
 
+
 public function libroCompras(Request $r)
 {
+    // Filtros
     $desde = $r->input('desde', date('Y-m-01'));
     $hasta = $r->input('hasta', date('Y-m-t'));
-    $wh    = $r->input('warehouse_id'); // opcional
 
-    // selector de bodegas
+    // Catálogos para combos (si los usás en la vista)
+    $suppliers  = DB::table('suppliers')->orderBy('name')->get();
+    $stores     = DB::table('stores')->orderBy('name')->get();
     $warehouses = DB::table('warehouses')->orderBy('name')->get();
 
+    // Query base (usa SOLO columnas reales)
     $q = DB::table('purchases as p')
-        ->join('suppliers as s','s.id','=','p.supplier_id')
-        ->select('p.id','p.date','p.total','p.subtotal','p.tax','s.name as supplier','p.warehouse_id');
+        ->leftJoin('suppliers as s', 's.id', '=', 'p.supplier_id')
+        ->leftJoin('warehouses as w', 'w.id', '=', 'p.warehouse_id')
+        ->leftJoin('stores as st', 'st.id', '=', 'w.store_id')
+        ->selectRaw("
+            p.id, p.date, p.payment_term, p.due_date,
+            p.subtotal, p.tax, p.total,
+            p.warehouse_id,
+            s.name  as supplier_name,
+            w.code  as warehouse_code, w.name as warehouse_name,
+            st.code as store_code,    st.name as store_name
+        ");
 
-    if ($wh) $q->where('p.warehouse_id',$wh);
-    $rows = $q->whereBetween('p.date',[$desde,$hasta])
-              ->orderBy('p.date')->orderBy('p.id')
-              ->get();
+    // Aplicar filtros
+    if ($r->filled('desde'))        $q->whereDate('p.date', '>=', $r->desde);
+    if ($r->filled('hasta'))        $q->whereDate('p.date', '<=', $r->hasta);
+    if ($r->filled('supplier_id'))  $q->where('p.supplier_id', $r->supplier_id);
+    if ($r->filled('store_id'))     $q->where('w.store_id',   $r->store_id);
+    if ($r->filled('warehouse_id')) $q->where('p.warehouse_id', $r->warehouse_id);
+    if ($r->filled('payment_term')) $q->where('p.payment_term', $r->payment_term);
 
-    $tot = (object)[
-        'gravado' => round($rows->sum('subtotal'),2),
-        'iva'     => round($rows->sum('tax'),2),
-        'total'   => round($rows->sum('total'),2),
-        'docs'    => $rows->count(),
-    ];
+    $rows = $q->orderByDesc('p.date')->orderByDesc('p.id')->paginate(25);
 
-    return view('reports.compras', compact('rows','desde','hasta','warehouses','wh','tot'));
+    // Totales (en página actual, si querés totales de todo usa ->get())
+    $sum_gravado = $rows->sum('subtotal');
+    $sum_iva     = $rows->sum('tax');
+    $sum_total   = $rows->sum('total');
+
+    // Links de export que heredan los filtros actuales
+    $exportCsv = route('exports.compras.csv', $r->query());
+    $exportPdf = route('exports.compras.pdf', $r->query());
+
+    return view('reports.compras', compact(
+        'rows','suppliers','stores','warehouses',
+        'desde','hasta',
+        'sum_gravado','sum_iva','sum_total',
+        'exportCsv','exportPdf'
+    ));
 }
+
+
+
 public function inventario(Request $r)
 {
     $wh   = $r->input('warehouse_id');     // opcional

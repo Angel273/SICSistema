@@ -13,10 +13,13 @@ class ProductController extends Controller
      */
     public function index()
     {
-        $rows = DB::table('products')->leftJoin('categories','categories.id','=','products.category_id')
-            ->select('products.*','categories.name AS category')
-            ->orderByDesc('id')
-            ->paginate(10);
+        $rows =  DB::table('products')
+        ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
+        ->leftJoin('product_stocks as ps', 'ps.product_id', '=', 'products.id')
+        ->selectRaw('products.*, categories.name AS category, COALESCE(SUM(ps.qty),0) AS stock_sum')
+        ->groupBy('products.id','products.sku','products.name','products.category_id','products.has_serial','products.avg_cost','categories.name') // incluye las columnas de products.* que uses
+        ->orderByDesc('products.id')
+        ->paginate(10);
             return view('products.index', compact('rows'));
     }
 

@@ -1,24 +1,42 @@
 @extends('layout')
 @section('content')
-<h2>Editar proveedor #{{ $supplier->id }}</h2>
-<form method="POST" action="{{ route('suppliers.update',$supplier->id) }}">
+<h1>Editar proveedor</h1>
+
+@if ($errors->any())
+  <div class="card" style="border-left:4px solid #e11d48; background:#fff5f5; padding:12px;">
+    <strong>Corrige estos campos:</strong>
+    <ul style="margin:6px 0 0 18px;">
+      @foreach ($errors->all() as $e) <li>{{ $e }}</li> @endforeach
+    </ul>
+  </div>
+@endif
+
+<form method="POST" action="{{ route('suppliers.update',$supplier->id) }}" class="card" style="display:grid; gap:12px; max-width:720px;">
   @csrf @method('PUT')
-  <label>Nombre</label><br>
-  <input type="text" name="name" value="{{ old('name',$supplier->name) }}" required><br>
 
-  <label>Email</label><br>
-  <input type="email" name="email" value="{{ old('email',$supplier->email) }}"><br>
+  <label><span>Nombre</span>
+    <input name="name" value="{{ old('name',$supplier->name) }}" maxlength="120" required>
+  </label>
 
-  <label>Teléfono</label><br>
-  <input type="text" name="phone" value="{{ old('phone',$supplier->phone) }}"><br>
+  <label><span>Email</span>
+    <input type="email" name="email" value="{{ old('email',$supplier->email) }}" maxlength="120">
+  </label>
 
-  <label>NIT</label><br>
-  <input type="text" name="tax_id" value="{{ old('tax_id',$supplier->tax_id) }}"><br>
+  <label><span>Teléfono</span>
+    <input name="phone" value="{{ old('phone',$supplier->phone) }}" maxlength="40">
+  </label>
 
-  <label>Dirección</label><br>
-  <input type="text" name="address" value="{{ old('address',$supplier->address) }}"><br><br>
+  <label><span>Dirección</span>
+    <input name="address" value="{{ old('address',$supplier->address) }}">
+  </label>
 
-  <button type="submit">Guardar cambios</button>
+  <label><span>NIT/NRC</span>
+    <input name="tax_id" value="{{ old('tax_id',$supplier->tax_id) }}">
+  </label>
+
+  <div style="display:flex; gap:8px; margin-top:4px;">
+    <button class="btn">Actualizar</button>
+    <a href="{{ route('suppliers.index') }}" class="btn">Volver</a>
+  </div>
 </form>
 @endsection
-
